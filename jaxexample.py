@@ -6,7 +6,7 @@ import distrax
 import optax
 
 NMAX = 128
-BATCHSIZE = 128
+BATCHSIZE = 512
 EPOCHSIZE = 512
 NEPOCHS = 2048*16
 
