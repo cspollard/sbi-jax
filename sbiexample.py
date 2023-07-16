@@ -3,6 +3,7 @@ import jax.numpy as numpy
 import jax.random as random
 import jax
 import optax
+import jax.scipy.optimize as optimize
 
 
 def gaussMixture(k, logits, mus, covs):
@@ -19,6 +20,7 @@ model = \
 
 def loss(params, batch):
   return - numpy.mean(model.apply(params, batch))
+
 
 @jax.jit
 def step(params, opt_state, batch):
@@ -37,7 +39,7 @@ optimizer = optax.adam(learning_rate=1e-4)
 opt_state = optimizer.init(params)
 
 n = 1024
-logits = numpy.array([0, 0, 0], dtype=float).reshape(1, 3).repeat(n, axis=0)
+logits = numpy.array([1, 1, 3], dtype=float).reshape(1, 3).repeat(n, axis=0)
 mus = numpy.array([0, 1, 2], dtype=float).reshape(3, 1)
 covs = numpy.array([1, 2, 3], dtype=float).reshape(3, 1, 1)
 
@@ -47,7 +49,6 @@ for _ in range(1000):
   batch = gaussMixture(thisk, logits, mus, covs)
 
   params , opt_state , loss_value = step(params, opt_state, batch)
-
 
 import matplotlib.figure as figure
 
@@ -60,5 +61,6 @@ plt.hist \
     ]
   , label=["flow" , "orig" , "initial"]
   )
+
 plt.legend()
 fig.savefig("test.pdf")
