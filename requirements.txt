@@ -1,0 +1,8 @@
+jax
+flax
+distrax
+optax
+orbax
+tqdm
+matplotlib
+einops
