@@ -7,17 +7,18 @@ from tqdm import tqdm
 import orbax
 
 from model import gen, prior, NMAX
-from deepset import phi, rho, fwd, loss, runloss, runlossrho
+from deepset import phi, rho, fwd, runloss, runlossrho
 from utils import splitkey
 from plot import plot
 
 
-BATCHSIZE = 64
-NBATCHES = 512
-NEPOCHS = 25
+BATCHSIZE = 128
+NBATCHES = 512*2
+NEPOCHS = 10
 LR = 1e-3
 FINETUNELR = 1e-4
-NPLOTPOINTS = 1000
+NPLOTPOINTS = 2000
+PREFACTOR = 4
 
 knext = random.PRNGKey(0)
 
@@ -49,15 +50,10 @@ sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
 optimizer = optax.adam(learning_rate=sched)
 opt_state = optimizer.init(modelparams)
 
-k, knext = splitkey(knext)
-testlabels = prior(k, 1000)
-testbatch , testns = gen(k, testlabels, NMAX)
-testns = testns // 2
-
 orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
 
 k, knext = splitkey(knext)
-plot(knext, NPLOTPOINTS, phi, rho, modelparams, label="_before")
+plot(knext, NPLOTPOINTS, phi, rho, modelparams, prefix="", label="_before")
 
 for iepoch in range(NEPOCHS):
   print("epoch:", iepoch)
@@ -66,13 +62,13 @@ for iepoch in range(NEPOCHS):
     labels = prior(k, BATCHSIZE)
     k, knext = splitkey(knext)
     batch , ns = gen(k, labels, NMAX)
-    ns = ns // 2
+    ns = ns // PREFACTOR
     modelparams, opt_state, loss_value = \
       step(modelparams, opt_state, batch, ns, labels)
 
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, label=f"_epoch{iepoch:02d}")
+  plot(knext, NPLOTPOINTS, phi, rho, modelparams, prefix="training/", label=f"_epoch{iepoch:02d}")
 
 
 save_args = orbax_utils.save_args_from_target(modelparams)
@@ -96,7 +92,7 @@ for iepoch in range(NEPOCHS):
 
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, label=f"_finetuneepoch{iepoch:02d}")
+  plot(knext, NPLOTPOINTS, phi, rho, modelparams, prefix="finetune/", label=f"_epoch{iepoch:02d}")
 
 
 state = \

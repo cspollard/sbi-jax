@@ -4,13 +4,13 @@ import jax
 import distrax
 from model import NMAX
 
-PHINODES = 64
-PHILAYERS = 6
+PHINODES = 32
+PHILAYERS = 3
 RHONODES = PHINODES
 RHOLAYERS = PHILAYERS
 
 philayers = [1] + [PHINODES]*PHILAYERS
-rholayers = [RHONODES]*RHOLAYERS  + [4]
+rholayers = [RHONODES]*RHOLAYERS  + [2]
 
 phi = \
   nn.Sequential \
@@ -54,7 +54,7 @@ def fwdrho(params, embed, interp, batch, ns):
 
 
 def loss(outs, pois):
-  dist = distrax.MultivariateNormalDiag(outs[:,:2], outs[:,2:])
+  dist = distrax.MultivariateNormalDiag(outs[:,:1], outs[:,1:])
   return - np.sum(dist.log_prob(pois))
 
 

@@ -3,11 +3,14 @@ from einops import repeat
 import jax.numpy as np
 from matplotlib.figure import Figure
 from utils import splitkey
-from model import prior, gen, NMAX
+from model import prior, gen, NMAX, SIGMAMU, SIGMAX
 from deepset import fwd
 
+def groundtruth(ns):
+  return np.sqrt(1.0 / (1.0 / SIGMAMU**2 + ns / SIGMAX**2))
 
-def plot(keyrest, batches, phi, rho, params, label=""):
+
+def plot(keyrest, batches, phi, rho, params, prefix="", label=""):
   arr = []
 
   for n in range(1, NMAX+1):
@@ -24,47 +27,34 @@ def plot(keyrest, batches, phi, rho, params, label=""):
     predicted = fwd(params, phi, rho, lax.stop_gradient(obs), ns)
 
     meanbiasmu = np.mean(predicted[:,0] - labels[:,0])
-    meanbiassig = np.mean(predicted[:,1] - labels[:,1])
-    meanuncertmu = np.mean(predicted[:,2])
-    meanuncertsig = np.mean(predicted[:,3])
+    meanuncertmu = np.mean(predicted[:,1])
 
     arr.append \
       ( [ meanbiasmu
-        , meanbiassig
         , meanuncertmu
-        , meanuncertsig
         ]
       )
 
+  def savepdf(fig, name):
+    return fig.savefig(f"{prefix}{name}{label}.pdf")
+
   fig = Figure((6, 6))
   plt = fig.add_subplot()
-  plt.plot(range(1, NMAX+1), [ a[0] for a in arr ])
+  plt.plot(range(1, NMAX+1), [ a[0] for a in arr ], label="predicted")
   plt.set_xlabel(r"number of observations")
   plt.set_ylabel(r"mean bias for $\mu$")
-  fig.savefig(f"meanbiasmu{label}.pdf")
+  plt.legend()
+  savepdf(fig, "meanbiasmu")
   fig.clf()
 
-
+  ns = np.mgrid[1:NMAX+1:NMAX*1j]
   fig = Figure((6, 6))
   plt = fig.add_subplot()
-  plt.plot(range(1, NMAX+1), [ a[1] for a in arr ])
-  plt.set_xlabel(r"number of observations")
-  plt.set_ylabel(r"mean bias for $\sigma$")
-  fig.savefig(f"meanbiassigma{label}.pdf")
-  fig.clf()
-
-  fig = Figure((6, 6))
-  plt = fig.add_subplot()
-  plt.plot(range(1, NMAX+1), [ a[2] for a in arr ])
+  plt.plot(range(1, NMAX+1), [ a[1] for a in arr ], label="predicted")
+  plt.plot(ns, groundtruth(ns), ls="-", color="red", label="ground truth")
   plt.set_xlabel(r"number of observations")
   plt.set_ylabel(r"mean uncertainty for $\mu$")
-  fig.savefig(f"meanuncertmu{label}.pdf")
-  fig.clf()
-
-  fig = Figure((6, 6))
-  plt = fig.add_subplot()
-  plt.plot(range(1, NMAX+1), [ a[3] for a in arr ])
-  plt.set_xlabel(r"number of observations")
-  plt.set_ylabel(r"mean uncertainty for $\sigma$")
-  fig.savefig(f"meanuncertsigma{label}.pdf")
+  plt.loglog()
+  plt.legend()
+  savepdf(fig, "meanuncertmu")
   fig.clf()
