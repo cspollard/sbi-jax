@@ -5,6 +5,7 @@ from flax.training import orbax_utils, train_state
 import optax
 from tqdm import tqdm
 import orbax
+from os import mkdirs
 
 from model import gen, prior, groundtruth
 from deepset import phi, rho, fwd, runloss, runlossrho
@@ -24,6 +25,10 @@ NMAXFINETUNE = 256
 
 
 knext = random.PRNGKey(0)
+
+mkdirs("initial", exist_ok=True)
+mkdirs("finetuned", exist_ok=True)
+mkdirs("direct", exist_ok=True)
 
 
 @jax.jit
@@ -55,9 +60,6 @@ opt_state = optimizer.init(modelparams)
 
 orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
 
-k, knext = splitkey(knext)
-plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="", label="_before", ntrain=NMAXSTART, groundtruth=groundtruth)
-
 for iepoch in range(NEPOCHS):
   print("epoch:", iepoch)
   for _ in tqdm(range(NBATCHES)):
@@ -70,8 +72,7 @@ for iepoch in range(NEPOCHS):
 
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="training/", label=f"_epoch{iepoch:02d}", ntrain=NMAXSTART, groundtruth=groundtruth)
-
+  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXSTART, groundtruth=groundtruth)
 
   save_args = orbax_utils.save_args_from_target(modelparams)
 
@@ -147,7 +148,7 @@ for iepoch in range(NEPOCHS):
     , rho
     , modelparams
     , NMAXFINETUNE
-    , prefix="finetuned/"
+    , prefix="direct/"
     , label=f"_epoch{iepoch:02d}"
     , ntrain=NMAXSTART
     , groundtruth=groundtruth
