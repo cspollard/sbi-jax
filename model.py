@@ -5,6 +5,7 @@ from utils import splitkey
 
 SIGMAX = 10
 SIGMAMU = 20
+SIGMASIG = 10
 
 def gen(keyrest, params, nmax):
   batches = params.shape[0]
@@ -22,9 +23,10 @@ def gen(keyrest, params, nmax):
 def prior(keyrest, batches):
   key , keyrest = splitkey(keyrest)
   mu = random.normal(key, (batches, 1)) * SIGMAMU
-  # key , keyrest = splitkey(keyrest)
-  # sig = random.gamma(key, 50, (batches, 1))
+  key , keyrest = splitkey(keyrest)
+  sig = random.uniform(key, (batches, 1)) * SIGMASIG
   return mu
 
-def groundtruth(ns):
-  return np.sqrt(1.0 / (1.0 / SIGMAMU**2 + ns / SIGMAX**2))
+groundtruth = None
+# def groundtruth(ns):
+#   return np.sqrt(1.0 / (1.0 / SIGMAMU**2 + ns / SIGMAX**2))

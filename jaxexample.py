@@ -19,9 +19,8 @@ LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
 
-NMAXSTART = 8
-NMAXFINETUNE = 256
-
+NMAXSTART = 256
+NMAXFINETUNE = NMAXSTART
 
 
 knext = random.PRNGKey(0)
@@ -76,35 +75,35 @@ for iepoch in range(NEPOCHS):
 
 save_args = orbax_utils.save_args_from_target(modelparams)
 
-orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/state.orbax", modelparams, save_args=save_args, force=True)
+orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/nofinetune.orbax", modelparams, save_args=save_args, force=True)
 
 
-sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHS*NBATCHES)
-optimizer = optax.adam(learning_rate=sched)
-opt_state = optimizer.init(modelparams)
+# sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHS*NBATCHES)
+# optimizer = optax.adam(learning_rate=sched)
+# opt_state = optimizer.init(modelparams)
 
-for iepoch in range(NEPOCHS):
-  print("epoch:", iepoch)
-  for _ in tqdm(range(NBATCHES)):
-    k, knext = splitkey(knext)
-    labels = prior(k, BATCHSIZE)
-    k, knext = splitkey(knext)
-    batch , ns = gen(k, labels, NMAXFINETUNE)
-    modelparams, opt_state, loss_value = \
-      steprho(modelparams, opt_state, batch, ns, labels)
-
-
-  k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="finetune/", label=f"_epoch{iepoch:02d}", ntrain=NMAXSTART, groundtruth=groundtruth)
+# for iepoch in range(NEPOCHS):
+#   print("epoch:", iepoch)
+#   for _ in tqdm(range(NBATCHES)):
+#     k, knext = splitkey(knext)
+#     labels = prior(k, BATCHSIZE)
+#     k, knext = splitkey(knext)
+#     batch , ns = gen(k, labels, NMAXFINETUNE)
+#     modelparams, opt_state, loss_value = \
+#       steprho(modelparams, opt_state, batch, ns, labels)
 
 
-state = \
-  train_state.TrainState.create \
-  ( apply_fn=fwd
-  , params=modelparams
-  , tx=optimizer
-  )
+#   k, knext = splitkey(knext)
+#   plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="finetune/", label=f"_epoch{iepoch:02d}", ntrain=NMAXSTART, groundtruth=groundtruth)
 
-save_args = orbax_utils.save_args_from_target(modelparams)
 
-orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/finetuned.orbax", modelparams, save_args=save_args, force=True)
+# state = \
+#   train_state.TrainState.create \
+#   ( apply_fn=fwd
+#   , params=modelparams
+#   , tx=optimizer
+#   )
+
+# save_args = orbax_utils.save_args_from_target(modelparams)
+
+# orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/finetuned.orbax", modelparams, save_args=save_args, force=True)
