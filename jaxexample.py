@@ -13,12 +13,12 @@ from plot import plot
 
 
 BATCHSIZE = 256
-NBATCHES = 512*2
-NEPOCHS = 64
+NBATCHES = 512
+NEPOCHS = 32
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
-PREFACTOR = 4
+PREFACTOR = 8
 
 knext = random.PRNGKey(0)
 
