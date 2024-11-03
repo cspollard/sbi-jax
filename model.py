@@ -4,16 +4,16 @@ from jax import random
 from utils import splitkey
 
 SIGMAMU = 20
-MAXSIG = 10
+MAXSIGMA = 10
 NMAXINITIAL = 2
-NMAXFINETUNE = 64
+NMAXFINETUNE = 16
 
 
 def gen(keyrest, params, nmax):
   batches = params.shape[0]
   mu = params
   key , keyrest = splitkey(keyrest)
-  sigma = random.uniform(key, (batches, 1)) * MAXSIG
+  sigma = random.uniform(key, (batches, 1)) * MAXSIGMA
 
   key , keyrest = splitkey(keyrest)
   ns = random.randint(key, (batches, 1), 1, nmax+1, dtype=int)
