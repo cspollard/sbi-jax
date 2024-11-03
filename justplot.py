@@ -21,6 +21,10 @@ initialparams = orbax_checkpointer.restore("/Users/cspollard/Physics/sbi-jax/ini
 finetunedparams = orbax_checkpointer.restore("/Users/cspollard/Physics/sbi-jax/finetuned.orbax", modelparams)
 directparams = orbax_checkpointer.restore("/Users/cspollard/Physics/sbi-jax/direct.orbax", modelparams)
 
-plot(knext, 100, phi, rho, initialparams, NMAXFINETUNE, label="_initial", ntrain=NMAXINITIAL, groundtruth=groundtruth)
-plot(knext, 100, phi, rho, finetunedparams, NMAXFINETUNE, label="_finetuned", ntrain=NMAXINITIAL, groundtruth=groundtruth)
-plot(knext, 100, phi, rho, directparams, NMAXFINETUNE, label="_direct", ntrain=NMAXINITIAL, groundtruth=groundtruth)
+dparams = \
+  { "initial" : initialparams
+  , "finetuned" : finetunedparams
+  , "direct" : directparams
+  }
+
+plot(knext, 100, phi, rho, dparams, NMAXFINETUNE, label="_compare", ntrain=NMAXINITIAL, groundtruth=groundtruth)

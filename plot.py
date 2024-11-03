@@ -2,42 +2,46 @@ import jax.lax as lax
 from einops import repeat
 import jax.numpy as np
 from matplotlib.figure import Figure
+
 from utils import splitkey
 from model import prior, gen, SIGMAMU, SIGMAX
-from deepset import fwd, masksum
+from deepset import masksum
+from utils import dmap, dmap1
 
-def plot(keyrest, batches, phi, rho, params, nmax, prefix="", label="", ntrain=-1, groundtruth=None):
-  arr = []
+def plot(keyrest, nbatches, phi, rho, dparams, nmax, prefix="", label="", ntrain=-1, groundtruth=None):
 
   key , keyrest = splitkey(keyrest)
-  labels = prior(key, batches)
+  labels = prior(key, nbatches)
   key , keyrest = splitkey(keyrest)
   obs , _ = gen(keyrest, labels, nmax)
-  embedding = phi.apply(params["phi"], lax.stop_gradient(obs))
+  embedding = dmap1(lambda p: phi.apply(p["phi"], lax.stop_gradient(obs)), dparams)
 
+  arr = { k : [] for k in dparams }
   for n in range(1, nmax+1):
 
-    ns = repeat(np.array([n]), "w -> h w", h=batches, w=1)
-    summed = masksum(embedding, ns)
+    ns = repeat(np.array([n]), "w -> h w", h=nbatches, w=1)
+    summed = dmap1(lambda e: masksum(e, ns), embedding)
 
-    predicted = rho.apply(params["rho"], summed)
-    predicted = predicted.at[:,1:].set(np.exp(predicted[:,1:]))
+    predicted = dmap(lambda k, s: rho.apply(dparams[k]["rho"], s), summed)
+    predicted = dmap1(lambda p : p.at[:,1:].set(np.exp(p[:,1:])), predicted)
 
-    meanbiasmu = np.mean(predicted[:,0] - labels[:,0])
-    meanuncertmu = np.mean(predicted[:,1])
+    for k in dparams:
+      meanbiasmu = np.mean(predicted[k][:,0] - labels[:,0])
+      meanuncertmu = np.mean(predicted[k][:,1])
 
-    arr.append \
-      ( [ meanbiasmu
-        , meanuncertmu
-        ]
-      )
+      arr[k].append \
+        ( [ meanbiasmu
+          , meanuncertmu
+          ]
+        )
 
   def savepdf(fig, name):
     return fig.savefig(f"{prefix}{name}{label}.pdf")
 
   fig = Figure((6, 6))
   plt = fig.add_subplot()
-  plt.plot(range(1, nmax+1), [ a[0] for a in arr ], label="predicted")
+  for k in dparams:
+    plt.plot(range(1, nmax+1), [ a[0] for a in arr[k] ], label=k)
 
   if (ntrain > 0):
     ymin, ymax = plt.get_ylim()
@@ -53,7 +57,9 @@ def plot(keyrest, batches, phi, rho, params, nmax, prefix="", label="", ntrain=-
   ns = np.mgrid[1:nmax+1:nmax*1j]
   fig = Figure((6, 6))
   plt = fig.add_subplot()
-  plt.plot(range(1, nmax+1), [ a[1] for a in arr ], label="predicted")
+
+  for k in dparams:
+    plt.plot(range(1, nmax+1), [ a[1] for a in arr[k] ], label=k)
 
   if groundtruth is not None:
     plt.plot(ns, groundtruth(ns), ls="--", color="red", label="ground truth")
