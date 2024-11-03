@@ -3,17 +3,19 @@ import jax.numpy as np
 from jax import random
 from utils import splitkey
 
-SIGMAMU = 20
-MAXSIGMA = 10
+PRIORSIGMAMU = 20
+MAXSIGMAX = 10
 NMAXINITIAL = 2
-NMAXFINETUNE = 16
+NMAXFINETUNE = 64
 
 
 def gen(keyrest, params, nmax):
   batches = params.shape[0]
   mu = params
+
+  # add a nuisance
   key , keyrest = splitkey(keyrest)
-  sigma = random.uniform(key, (batches, 1)) * MAXSIGMA
+  sigma = random.uniform(key, (batches, 1)) * MAXSIGMAX
 
   key , keyrest = splitkey(keyrest)
   ns = random.randint(key, (batches, 1), 1, nmax+1, dtype=int)
@@ -29,7 +31,7 @@ def gen(keyrest, params, nmax):
 
 def prior(keyrest, batches):
   key , keyrest = splitkey(keyrest)
-  mu = random.normal(key, (batches, 1)) * SIGMAMU
+  mu = random.normal(key, (batches, 1)) * PRIORSIGMAMU
   return mu
 
 groundtruth = None
