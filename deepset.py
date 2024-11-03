@@ -4,7 +4,7 @@ import jax
 import distrax
 from model import NMAX
 
-PHINODES = 32
+PHINODES = 128
 PHILAYERS = 3
 RHONODES = PHINODES
 RHOLAYERS = PHILAYERS

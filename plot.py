@@ -44,6 +44,7 @@ def plot(keyrest, batches, phi, rho, params, prefix="", label=""):
   plt.set_xlabel(r"number of observations")
   plt.set_ylabel(r"mean bias for $\mu$")
   plt.legend()
+  fig.tight_layout()
   savepdf(fig, "meanbiasmu")
   fig.clf()
 
@@ -56,5 +57,6 @@ def plot(keyrest, batches, phi, rho, params, prefix="", label=""):
   plt.set_ylabel(r"mean uncertainty for $\mu$")
   plt.loglog()
   plt.legend()
+  fig.tight_layout()
   savepdf(fig, "meanuncertmu")
   fig.clf()

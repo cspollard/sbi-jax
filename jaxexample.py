@@ -12,9 +12,9 @@ from utils import splitkey
 from plot import plot
 
 
-BATCHSIZE = 128
+BATCHSIZE = 256
 NBATCHES = 512*2
-NEPOCHS = 10
+NEPOCHS = 64
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
