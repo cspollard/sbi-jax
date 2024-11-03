@@ -4,7 +4,7 @@ import jax.numpy as np
 from matplotlib.figure import Figure
 
 from utils import splitkey
-from model import prior, gen, SIGMAMU, SIGMAX
+from model import prior, gen
 from deepset import masksum
 from utils import dmap, dmap1
 

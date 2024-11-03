@@ -15,10 +15,12 @@ from plot import plot
 
 BATCHSIZE = 128
 NBATCHES = 512*8
-NEPOCHS = 10
+NEPOCHS = 16
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
+RETRAINDIRECT = True
+RETRAINNONDIRECT = True
 
 knext = random.PRNGKey(0)
 
@@ -43,123 +45,124 @@ def steprho(params, opt_state, batch, ns, labels):
   return params, opt_state, loss_value
 
 
-k, knext = splitkey(knext)
-phiparams = phi.init(k, np.zeros((1, 13, 1)))
-k, knext = splitkey(knext)
-rhoparams = rho.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
-
-modelparams = { "rho" : rhoparams , "phi" : phiparams }
-
-# Initial training
-
-sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
-optimizer = optax.adam(learning_rate=sched)
-opt_state = optimizer.init(modelparams)
-
-orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-
-for iepoch in range(NEPOCHS):
-  print("epoch:", iepoch)
-  for _ in tqdm(range(NBATCHES)):
-    k, knext = splitkey(knext)
-    labels = prior(k, BATCHSIZE)
-    k, knext = splitkey(knext)
-    batch , ns = gen(k, labels, NMAXINITIAL)
-    modelparams, opt_state, loss_value = \
-      step(modelparams, opt_state, batch, ns, labels)
-
+if RETRAINNONDIRECT:
+  # Initial training
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, { "initial" : modelparams }, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXINITIAL, groundtruth=groundtruth)
-
-  save_args = orbax_utils.save_args_from_target(modelparams)
-
-  orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/initial.orbax", modelparams, save_args=save_args, force=True)
-
-# finetuned training
-
-sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHS*NBATCHES)
-optimizer = optax.adam(learning_rate=sched)
-opt_state = optimizer.init(modelparams)
-
-for iepoch in range(NEPOCHS):
-  print("epoch:", iepoch)
-  for _ in tqdm(range(NBATCHES)):
-    k, knext = splitkey(knext)
-    labels = prior(k, BATCHSIZE)
-    k, knext = splitkey(knext)
-    batch , ns = gen(k, labels, NMAXFINETUNE)
-    modelparams, opt_state, loss_value = \
-      steprho(modelparams, opt_state, batch, ns, labels)
-
-
+  phiparams = phi.init(k, np.zeros((1, 1, 1)))
   k, knext = splitkey(knext)
-  plot \
-    ( knext
-    , NPLOTPOINTS
-    , phi
-    , rho
-    , { "finetuned" : modelparams }
-    , NMAXFINETUNE
-    , prefix="finetuned/"
-    , label=f"_epoch{iepoch:02d}"
-    , ntrain=NMAXINITIAL
-    , groundtruth=groundtruth
-    )
+  rhoparams = rho.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
 
-  save_args = orbax_utils.save_args_from_target(modelparams)
+  modelparams = { "rho" : rhoparams , "phi" : phiparams }
 
-  orbax_checkpointer.save \
-    ( "/Users/cspollard/Physics/sbi-jax/finetuned.orbax"
-    , modelparams
-    , save_args=save_args
-    , force=True
-    )
+  sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
+  optimizer = optax.adam(learning_rate=sched)
+  opt_state = optimizer.init(modelparams)
+
+  orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+
+  for iepoch in range(NEPOCHS):
+    print("epoch:", iepoch)
+    for _ in tqdm(range(NBATCHES)):
+      k, knext = splitkey(knext)
+      labels = prior(k, BATCHSIZE)
+      k, knext = splitkey(knext)
+      batch , ns = gen(k, labels, NMAXINITIAL)
+      modelparams, opt_state, loss_value = \
+        step(modelparams, opt_state, batch, ns, labels)
+
+
+    k, knext = splitkey(knext)
+    plot(knext, NPLOTPOINTS, phi, rho, { "initial" : modelparams }, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXINITIAL, groundtruth=groundtruth)
+
+    save_args = orbax_utils.save_args_from_target(modelparams)
+
+    orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/initial.orbax", modelparams, save_args=save_args, force=True)
+
+  # finetuned training
+
+  sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHS*NBATCHES)
+  optimizer = optax.adam(learning_rate=sched)
+  opt_state = optimizer.init(modelparams)
+
+  for iepoch in range(NEPOCHS):
+    print("epoch:", iepoch)
+    for _ in tqdm(range(NBATCHES)):
+      k, knext = splitkey(knext)
+      labels = prior(k, BATCHSIZE)
+      k, knext = splitkey(knext)
+      batch , ns = gen(k, labels, NMAXFINETUNE)
+      modelparams, opt_state, loss_value = \
+        steprho(modelparams, opt_state, batch, ns, labels)
+
+
+    k, knext = splitkey(knext)
+    plot \
+      ( knext
+      , NPLOTPOINTS
+      , phi
+      , rho
+      , { "finetuned" : modelparams }
+      , NMAXFINETUNE
+      , prefix="finetuned/"
+      , label=f"_epoch{iepoch:02d}"
+      , ntrain=NMAXINITIAL
+      , groundtruth=groundtruth
+      )
+
+    save_args = orbax_utils.save_args_from_target(modelparams)
+
+    orbax_checkpointer.save \
+      ( "/Users/cspollard/Physics/sbi-jax/finetuned.orbax"
+      , modelparams
+      , save_args=save_args
+      , force=True
+      )
 
 
 # "direct" training of the full deepset
-
-k, knext = splitkey(knext)
-phiparams = phi.init(k, np.zeros((1, 13, 1)))
-k, knext = splitkey(knext)
-rhoparams = rho.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
-
-modelparams = { "rho" : rhoparams , "phi" : phiparams }
-
-sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
-optimizer = optax.adam(learning_rate=sched)
-opt_state = optimizer.init(modelparams)
-
-for iepoch in range(NEPOCHS):
-  print("epoch:", iepoch)
-  for _ in tqdm(range(NBATCHES)):
-    k, knext = splitkey(knext)
-    labels = prior(k, BATCHSIZE)
-    k, knext = splitkey(knext)
-    batch , ns = gen(k, labels, NMAXFINETUNE)
-    modelparams, opt_state, loss_value = \
-      step(modelparams, opt_state, batch, ns, labels)
-
-
+if RETRAINDIRECT:
   k, knext = splitkey(knext)
-  plot \
-    ( knext
-    , NPLOTPOINTS
-    , phi
-    , rho
-    , { "direct" : modelparams }
-    , NMAXFINETUNE
-    , prefix="direct/"
-    , label=f"_epoch{iepoch:02d}"
-    , ntrain=NMAXINITIAL
-    , groundtruth=groundtruth
-    )
+  phiparams = phi.init(k, np.zeros((1, 1, 1)))
+  k, knext = splitkey(knext)
+  rhoparams = rho.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
 
-  save_args = orbax_utils.save_args_from_target(modelparams)
+  modelparams = { "rho" : rhoparams , "phi" : phiparams }
 
-  orbax_checkpointer.save \
-    ( "/Users/cspollard/Physics/sbi-jax/direct.orbax"
-    , modelparams
-    , save_args=save_args
-    , force=True
-    )
+  sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
+  optimizer = optax.adam(learning_rate=sched)
+  opt_state = optimizer.init(modelparams)
+
+  for iepoch in range(NEPOCHS):
+    print("epoch:", iepoch)
+    for _ in tqdm(range(NBATCHES)):
+      k, knext = splitkey(knext)
+      labels = prior(k, BATCHSIZE)
+      k, knext = splitkey(knext)
+      batch , ns = gen(k, labels, NMAXFINETUNE)
+      modelparams, opt_state, loss_value = \
+        step(modelparams, opt_state, batch, ns, labels)
+
+
+    k, knext = splitkey(knext)
+    plot \
+      ( knext
+      , NPLOTPOINTS
+      , phi
+      , rho
+      , { "direct" : modelparams }
+      , NMAXFINETUNE
+      , prefix="direct/"
+      , label=f"_epoch{iepoch:02d}"
+      , ntrain=NMAXINITIAL
+      , groundtruth=groundtruth
+      )
+
+    save_args = orbax_utils.save_args_from_target(modelparams)
+
+    orbax_checkpointer.save \
+      ( "/Users/cspollard/Physics/sbi-jax/direct.orbax"
+      , modelparams
+      , save_args=save_args
+      , force=True
+      )
