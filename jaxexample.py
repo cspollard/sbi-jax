@@ -5,7 +5,7 @@ from flax.training import orbax_utils
 import optax
 from tqdm import tqdm
 import orbax
-from os import mkdirs
+from os import makedirs
 
 from model import gen, prior, groundtruth
 from deepset import phi, rho, runloss, runlossrho
@@ -15,20 +15,20 @@ from plot import plot
 
 BATCHSIZE = 128
 NBATCHES = 512*8
-NEPOCHS = 16
+NEPOCHS = 1
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
 
 NMAXSTART = 8
-NMAXFINETUNE = 256
+NMAXFINETUNE = 64
 
 
 knext = random.PRNGKey(0)
 
-mkdirs("initial", exist_ok=True)
-mkdirs("finetuned", exist_ok=True)
-mkdirs("direct", exist_ok=True)
+makedirs("initial", exist_ok=True)
+makedirs("finetuned", exist_ok=True)
+makedirs("direct", exist_ok=True)
 
 
 @jax.jit
@@ -85,7 +85,7 @@ for iepoch in range(NEPOCHS):
 
 sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHS*NBATCHES)
 optimizer = optax.adam(learning_rate=sched)
-opt_state = optimizer.init(rhoparams)
+opt_state = optimizer.init(modelparams)
 
 for iepoch in range(NEPOCHS):
   print("epoch:", iepoch)
@@ -94,8 +94,8 @@ for iepoch in range(NEPOCHS):
     labels = prior(k, BATCHSIZE)
     k, knext = splitkey(knext)
     batch , ns = gen(k, labels, NMAXFINETUNE)
-    rhoparams, opt_state, loss_value = \
-      steprho(rhoparams, opt_state, batch, ns, labels)
+    modelparams, opt_state, loss_value = \
+      steprho(modelparams, opt_state, batch, ns, labels)
 
 
   k, knext = splitkey(knext)
@@ -104,7 +104,7 @@ for iepoch in range(NEPOCHS):
     , NPLOTPOINTS
     , phi
     , rho
-    , { "phi" : modelparams["phi"] , "rho" : rhoparams }
+    , modelparams
     , NMAXFINETUNE
     , prefix="finetuned/"
     , label=f"_epoch{iepoch:02d}"
@@ -116,7 +116,7 @@ for iepoch in range(NEPOCHS):
 
   orbax_checkpointer.save \
     ( "/Users/cspollard/Physics/sbi-jax/finetuned.orbax"
-    , { "phi" : modelparams["phi"] , "rho" : rhoparams }
+    , modelparams
     , save_args=save_args
     , force=True
     )
