@@ -6,6 +6,9 @@ from utils import splitkey
 SIGMAX = 10
 SIGMAMU = 20
 SIGMASIG = 10
+NMAXINITIAL = 8
+NMAXFINETUNE = 64
+
 
 def gen(keyrest, params, nmax):
   batches = params.shape[0]

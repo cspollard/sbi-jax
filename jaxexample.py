@@ -7,7 +7,7 @@ from tqdm import tqdm
 import orbax
 from os import makedirs
 
-from model import gen, prior, groundtruth
+from model import gen, prior, groundtruth, NMAXINITIAL, NMAXFINETUNE
 from deepset import phi, rho, runloss, runlossrho
 from utils import splitkey
 from plot import plot
@@ -19,10 +19,6 @@ NEPOCHS = 1
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
-
-NMAXSTART = 8
-NMAXFINETUNE = 64
-
 
 knext = random.PRNGKey(0)
 
@@ -68,13 +64,13 @@ for iepoch in range(NEPOCHS):
     k, knext = splitkey(knext)
     labels = prior(k, BATCHSIZE)
     k, knext = splitkey(knext)
-    batch , ns = gen(k, labels, NMAXSTART)
+    batch , ns = gen(k, labels, NMAXINITIAL)
     modelparams, opt_state, loss_value = \
       step(modelparams, opt_state, batch, ns, labels)
 
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXSTART, groundtruth=groundtruth)
+  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXINITIAL, groundtruth=groundtruth)
 
   save_args = orbax_utils.save_args_from_target(modelparams)
 
@@ -108,7 +104,7 @@ for iepoch in range(NEPOCHS):
     , NMAXFINETUNE
     , prefix="finetuned/"
     , label=f"_epoch{iepoch:02d}"
-    , ntrain=NMAXSTART
+    , ntrain=NMAXINITIAL
     , groundtruth=groundtruth
     )
 
@@ -156,7 +152,7 @@ for iepoch in range(NEPOCHS):
     , NMAXFINETUNE
     , prefix="direct/"
     , label=f"_epoch{iepoch:02d}"
-    , ntrain=NMAXSTART
+    , ntrain=NMAXINITIAL
     , groundtruth=groundtruth
     )
 
