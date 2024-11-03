@@ -1,8 +1,8 @@
+from einops import repeat, rearrange
 import jax.numpy as np
 from flax import linen as nn
 import jax
 import distrax
-from model import NMAX
 
 PHINODES = 128
 PHILAYERS = 3
@@ -29,13 +29,12 @@ rho = \
 
 def masksum(ten, ns):
   bsize = ns.shape[0]
-  walk = np.repeat(np.expand_dims(np.arange(NMAX), axis=1), bsize, axis=1).T
-  ns = ns.repeat(NMAX, axis=1)
+  nmax = ten.shape[1]
+  walk = repeat(np.arange(0, nmax), "w -> b w", b = bsize)
+
   mask = walk < ns
-  mask = np.repeat(np.expand_dims(mask, axis=2), philayers[-1], axis=2)
-
+  mask = repeat(mask, "b w -> b w 128")
   return np.sum(ten, axis=1, where=mask)
-
 
 def fwd(params, embed, interp, batch, ns):
   embedding = embed.apply(params["phi"], batch)
@@ -44,7 +43,6 @@ def fwd(params, embed, interp, batch, ns):
   outs = outs.at[:,1:].set(np.exp(outs[:,1:]))
   return outs
 
-
 def fwdrho(params, embed, interp, batch, ns):
   embedding = embed.apply(params["phi"], batch)
   summed = jax.lax.stop_gradient(masksum(embedding, ns))
@@ -52,16 +50,13 @@ def fwdrho(params, embed, interp, batch, ns):
   outs = outs.at[:,1:].set(np.exp(outs[:,1:]))
   return outs
 
-
 def loss(outs, pois):
   dist = distrax.MultivariateNormalDiag(outs[:,:1], outs[:,1:])
   return - np.sum(dist.log_prob(pois))
 
-
 def runloss(params, embed, interp, batch, ns, pois):
   outs = fwd(params, embed, interp, batch, ns)
   return loss(outs, pois)
-
 
 def runlossrho(params, embed, interp, batch, ns, pois):
   outs = fwdrho(params, embed, interp, batch, ns)

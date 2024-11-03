@@ -6,19 +6,23 @@ import optax
 from tqdm import tqdm
 import orbax
 
-from model import gen, prior, NMAX
+from model import gen, prior, groundtruth
 from deepset import phi, rho, fwd, runloss, runlossrho
 from utils import splitkey
 from plot import plot
 
 
-BATCHSIZE = 256
-NBATCHES = 512
-NEPOCHS = 32
+BATCHSIZE = 128
+NBATCHES = 512*8
+NEPOCHS = 16
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
-PREFACTOR = 8
+
+NMAXSTART = 8
+NMAXFINETUNE = 256
+
+
 
 knext = random.PRNGKey(0)
 
@@ -53,7 +57,7 @@ opt_state = optimizer.init(modelparams)
 orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
 
 k, knext = splitkey(knext)
-plot(knext, NPLOTPOINTS, phi, rho, modelparams, prefix="", label="_before")
+plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="", label="_before", ntrain=NMAXSTART, groundtruth=groundtruth)
 
 for iepoch in range(NEPOCHS):
   print("epoch:", iepoch)
@@ -61,14 +65,13 @@ for iepoch in range(NEPOCHS):
     k, knext = splitkey(knext)
     labels = prior(k, BATCHSIZE)
     k, knext = splitkey(knext)
-    batch , ns = gen(k, labels, NMAX)
-    ns = ns // PREFACTOR
+    batch , ns = gen(k, labels, NMAXSTART)
     modelparams, opt_state, loss_value = \
       step(modelparams, opt_state, batch, ns, labels)
 
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, prefix="training/", label=f"_epoch{iepoch:02d}")
+  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="training/", label=f"_epoch{iepoch:02d}", ntrain=NMAXSTART, groundtruth=groundtruth)
 
 
 save_args = orbax_utils.save_args_from_target(modelparams)
@@ -86,13 +89,13 @@ for iepoch in range(NEPOCHS):
     k, knext = splitkey(knext)
     labels = prior(k, BATCHSIZE)
     k, knext = splitkey(knext)
-    batch , ns = gen(k, labels, NMAX)
+    batch , ns = gen(k, labels, NMAXFINETUNE)
     modelparams, opt_state, loss_value = \
       steprho(modelparams, opt_state, batch, ns, labels)
 
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, prefix="finetune/", label=f"_epoch{iepoch:02d}")
+  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="finetune/", label=f"_epoch{iepoch:02d}", ntrain=NMAXSTART, groundtruth=groundtruth)
 
 
 state = \
