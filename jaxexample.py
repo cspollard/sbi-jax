@@ -1,14 +1,14 @@
 import jax.numpy as np
 import jax
 from jax import random
-from flax.training import orbax_utils, train_state
+from flax.training import orbax_utils
 import optax
 from tqdm import tqdm
 import orbax
 from os import mkdirs
 
 from model import gen, prior, groundtruth
-from deepset import phi, rho, fwd, runloss, runlossrho
+from deepset import phi, rho, runloss, runlossrho
 from utils import splitkey
 from plot import plot
 
@@ -54,6 +54,8 @@ rhoparams = rho.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
 
 modelparams = { "rho" : rhoparams , "phi" : phiparams }
 
+# Initial training
+
 sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
 optimizer = optax.adam(learning_rate=sched)
 opt_state = optimizer.init(modelparams)
@@ -78,6 +80,8 @@ for iepoch in range(NEPOCHS):
 
   orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/initial.orbax", modelparams, save_args=save_args, force=True)
 
+
+# finetuned training
 
 sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHS*NBATCHES)
 optimizer = optax.adam(learning_rate=sched)
@@ -118,6 +122,8 @@ for iepoch in range(NEPOCHS):
     )
 
 
+# "direct" training of the full deepset
+
 k, knext = splitkey(knext)
 phiparams = phi.init(k, np.zeros((1, 13, 1)))
 k, knext = splitkey(knext)
@@ -137,7 +143,7 @@ for iepoch in range(NEPOCHS):
     k, knext = splitkey(knext)
     batch , ns = gen(k, labels, NMAXFINETUNE)
     modelparams, opt_state, loss_value = \
-      steprho(modelparams, opt_state, batch, ns, labels)
+      step(modelparams, opt_state, batch, ns, labels)
 
 
   k, knext = splitkey(knext)
