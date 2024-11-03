@@ -6,7 +6,7 @@ from utils import splitkey
 SIGMAX = 10
 SIGMAMU = 20
 SIGMASIG = 10
-NMAXINITIAL = 8
+NMAXINITIAL = 2
 NMAXFINETUNE = 64
 
 

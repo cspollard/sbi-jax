@@ -70,12 +70,11 @@ for iepoch in range(NEPOCHS):
 
 
   k, knext = splitkey(knext)
-  plot(knext, NPLOTPOINTS, phi, rho, modelparams, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXINITIAL, groundtruth=groundtruth)
+  plot(knext, NPLOTPOINTS, phi, rho, { "initial" : modelparams }, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXINITIAL, groundtruth=groundtruth)
 
   save_args = orbax_utils.save_args_from_target(modelparams)
 
   orbax_checkpointer.save("/Users/cspollard/Physics/sbi-jax/initial.orbax", modelparams, save_args=save_args, force=True)
-
 
 # finetuned training
 
@@ -100,7 +99,7 @@ for iepoch in range(NEPOCHS):
     , NPLOTPOINTS
     , phi
     , rho
-    , modelparams
+    , { "finetuned" : modelparams }
     , NMAXFINETUNE
     , prefix="finetuned/"
     , label=f"_epoch{iepoch:02d}"
@@ -148,7 +147,7 @@ for iepoch in range(NEPOCHS):
     , NPLOTPOINTS
     , phi
     , rho
-    , modelparams
+    , { "direct" : modelparams }
     , NMAXFINETUNE
     , prefix="direct/"
     , label=f"_epoch{iepoch:02d}"
