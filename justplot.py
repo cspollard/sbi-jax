@@ -28,3 +28,6 @@ dparams = \
   }
 
 plot(knext, 100, phi, rho, dparams, NMAXFINETUNE, label="_compare", ntrain=NMAXINITIAL, groundtruth=groundtruth)
+
+dparams.pop("initial")
+plot(knext, 100, phi, rho, dparams, NMAXFINETUNE, label="_compare_zoom", ntrain=NMAXINITIAL, groundtruth=groundtruth)

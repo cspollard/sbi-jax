@@ -48,7 +48,7 @@ def plot(keyrest, nbatches, phi, rho, dparams, nmax, prefix="", label="", ntrain
     plt.plot([ntrain]*2, [ymin, ymax], alpha=0.5, color="black", ls=":", label="max $\phi$ training", zorder=10)
 
   plt.set_xlabel(r"number of observations")
-  plt.set_ylabel(r"mean bias for $\mu$")
+  plt.set_ylabel(r"mean bias of $\mu$")
   plt.legend()
   fig.tight_layout()
   savepdf(fig, "meanbiasmu")
@@ -65,7 +65,7 @@ def plot(keyrest, nbatches, phi, rho, dparams, nmax, prefix="", label="", ntrain
     plt.plot(ns, groundtruth(ns), ls="--", color="red", label="ground truth")
 
   plt.set_xlabel(r"number of observations")
-  plt.set_ylabel(r"mean uncertainty for $\mu$")
+  plt.set_ylabel(r"mean posterior width")
   plt.loglog()
 
   if (ntrain > 0):
