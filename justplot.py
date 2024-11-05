@@ -10,7 +10,7 @@ from plot import plot
 knext = random.PRNGKey(0)
 
 k, knext = splitkey(knext)
-phiparams = phi.init(k, np.zeros((1, 13, 1)))
+phiparams = phi.init(k, np.zeros((1, 1, 1)))
 k, knext = splitkey(knext)
 rhoparams = rho.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
 
