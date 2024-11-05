@@ -5,7 +5,7 @@ from utils import splitkey
 
 PRIORSIGMAMU = 10
 MAXSIGMAX = 100
-NMAXINITIAL = 1
+NMAXINITIAL = 2
 NMAXFINETUNE = 16
 
 
