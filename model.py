@@ -3,10 +3,10 @@ import jax.numpy as np
 from jax import random
 from utils import splitkey
 
-PRIORSIGMAMU = 20
-MAXSIGMAX = 10
-NMAXINITIAL = 2
-NMAXFINETUNE = 64
+PRIORSIGMAMU = 10
+MAXSIGMAX = 100
+NMAXINITIAL = 1
+NMAXFINETUNE = 16
 
 
 def gen(keyrest, params, nmax):
