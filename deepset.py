@@ -30,10 +30,11 @@ rho = \
 def masksum(ten, ns):
   bsize = ns.shape[0]
   nmax = ten.shape[1]
-  walk = repeat(np.arange(0, nmax), "w -> b w", b = bsize)
+  l = ten.shape[2]
+  walk = repeat(np.arange(0, nmax), "w -> b w", b=bsize)
 
   mask = walk < ns
-  mask = repeat(mask, "b w -> b w 128")
+  mask = repeat(mask, "b w -> b w l", l=l)
   return np.sum(ten, axis=1, where=mask)
 
 def fwd(params, embed, interp, batch, ns):
