@@ -12,12 +12,11 @@ from deepset import phi, rho, tau, runloss, runlossrho, runlosstau
 from utils import splitkey
 from plot import plot, plottau
 
-
 BATCHSIZE = 128
 NBATCHES = 512*8
-NEPOCHSINITIAL = 8
-NEPOCHSFINETUNE = 16
-NEPOCHSDIRECT = 1
+NEPOCHSINITIAL = 32
+NEPOCHSFINETUNE = 64
+NEPOCHSDIRECT = 64
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
@@ -81,6 +80,7 @@ if RETRAINNONDIRECT:
       labels = prior(k, BATCHSIZE)
       k, knext = splitkey(knext)
       batch , ns = gen(k, labels, NMAXINITIAL)
+
       modelparams, opt_state, loss_value = \
         step(modelparams, opt_state, batch, ns, labels)
 
@@ -150,6 +150,7 @@ if RETRAINNONDIRECT:
       , NMAXFINETUNE
       , prefix="finetuned/"
       , label=f"_epoch{iepoch:02d}"
+      , axislabels = [ "$\\langle x \\rangle$" , "$\\text{std dev}[ x ]$" ]
       )
 
     save_args = orbax_utils.save_args_from_target(modelparams)

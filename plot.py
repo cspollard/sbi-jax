@@ -78,7 +78,7 @@ def plot(keyrest, nbatches, phi, rho, dparams, nmax, prefix="", label="", ntrain
   fig.clf()
 
 
-def plottau(keyrest, nbatches, phi, tau, params, nmax, prefix="", label=""):
+def plottau(keyrest, nbatches, phi, tau, params, nmax, prefix="", label="", axislabels=[]):
   key , keyrest = splitkey(keyrest)
   labels = prior(key, nbatches)
   key , keyrest = splitkey(keyrest)
@@ -95,6 +95,15 @@ def plottau(keyrest, nbatches, phi, tau, params, nmax, prefix="", label=""):
     plt = fig.add_subplot()
 
     plt.scatter(summ[:,i], taupred[:,i])
+
+    minx , maxx = plt.get_xlim()
+    miny , maxy = plt.get_ylim()
+
+    plt.plot([minx , maxx], [minx, maxx], ls='--', color=("gray", 0.5), zorder=-1)
+
+    if axislabels is not []:
+      plt.set_xlabel("true " + axislabels[i])
+      plt.set_ylabel("predicted " + axislabels[i])
 
     savepdf(fig, "tauout_%d" % i)
 

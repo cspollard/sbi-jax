@@ -39,9 +39,12 @@ groundtruth = None
 
 
 def suffstats(xs, ns):
-  sumxs = masksum(xs, ns)
-  sumxs2 = masksum(xs * xs, ns)
-  return np.concatenate([ sumxs / ns , np.sqrt(sumxs2 / ns)], axis=1)
+  avgs = masksum(xs, ns) / ns
+  vars = \
+    masksum \
+    ( (xs - repeat(avgs, "b l -> b w l", w=xs.shape[1]))**2, ns
+    ) / ns
+  return np.concatenate([avgs , np.sqrt(vars)], axis=1)
 
 # def groundtruth(ns):
 #   return np.sqrt(1.0 / (1.0 / SIGMAMU**2 + ns / SIGMAX**2))
