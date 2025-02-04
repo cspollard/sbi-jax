@@ -11,6 +11,7 @@ RHOLAYERS = PHILAYERS
 
 philayers = [1] + [PHINODES]*PHILAYERS
 rholayers = [RHONODES]*RHOLAYERS  + [2]
+taulayers = [RHONODES]*RHOLAYERS  + [2]
 
 phi = \
   nn.Sequential \
@@ -24,6 +25,11 @@ phi = \
 rho = \
   nn.Sequential \
   ( [ layer for size in rholayers for layer in [ nn.Dense(size) , nn.relu ] ][:-1]
+  )
+
+tau = \
+  nn.Sequential \
+  ( [ layer for size in taulayers for layer in [ nn.Dense(size) , nn.relu ] ][:-1]
   )
 
 
@@ -44,6 +50,7 @@ def fwd(params, embed, interp, batch, ns):
   outs = outs.at[:,1:].set(np.exp(outs[:,1:]))
   return outs
 
+# prevents gradients from propagating back through to phi
 def fwdrho(params, embed, interp, batch, ns):
   embedding = embed.apply(params["phi"], batch)
   summed = jax.lax.stop_gradient(masksum(embedding, ns))
@@ -51,14 +58,26 @@ def fwdrho(params, embed, interp, batch, ns):
   outs = outs.at[:,1:].set(np.exp(outs[:,1:]))
   return outs
 
-def loss(outs, pois):
+# prevents gradients from propagating back through to phi
+def fwdtau(params, embed, interp, batch, ns):
+  embedding = embed.apply(params["phi"], batch)
+  summed = jax.lax.stop_gradient(masksum(embedding, ns))
+  outs = interp.apply(params["tau"], summed)
+  return outs
+
+def mvnloss(outs, pois):
   dist = distrax.MultivariateNormalDiag(outs[:,:1], outs[:,1:])
   return - np.sum(dist.log_prob(pois))
 
 def runloss(params, embed, interp, batch, ns, pois):
   outs = fwd(params, embed, interp, batch, ns)
-  return loss(outs, pois)
+  return mvnloss(outs, pois)
 
 def runlossrho(params, embed, interp, batch, ns, pois):
   outs = fwdrho(params, embed, interp, batch, ns)
-  return loss(outs, pois)
+  return mvnloss(outs, pois)
+
+def runlosstau(params, embed, interp, batch, ns, labels):
+  outs = fwdtau(params, embed, interp, batch, ns)
+  return np.mean((outs - labels)**2)
+

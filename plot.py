@@ -4,8 +4,8 @@ import jax.numpy as np
 from matplotlib.figure import Figure
 
 from utils import splitkey
-from model import prior, gen
-from deepset import masksum
+from model import prior, gen, suffstats
+from deepset import masksum, fwdtau
 from utils import dmap, dmap1
 
 def plot(keyrest, nbatches, phi, rho, dparams, nmax, prefix="", label="", ntrain=-1, groundtruth=None):
@@ -76,3 +76,26 @@ def plot(keyrest, nbatches, phi, rho, dparams, nmax, prefix="", label="", ntrain
   fig.tight_layout()
   savepdf(fig, "meanuncertmu")
   fig.clf()
+
+
+def plottau(keyrest, nbatches, phi, tau, params, nmax, prefix="", label=""):
+  key , keyrest = splitkey(keyrest)
+  labels = prior(key, nbatches)
+  key , keyrest = splitkey(keyrest)
+  obs , ns = gen(keyrest, labels, nmax)
+  taupred = fwdtau(params, phi, tau, lax.stop_gradient(obs), ns)
+  summ = suffstats(obs , ns)
+
+  def savepdf(fig, name):
+    return fig.savefig(f"{prefix}{name}{label}.pdf")
+
+  fig = Figure((6, 6))
+
+  for i in range(summ.shape[1]):
+    plt = fig.add_subplot()
+
+    plt.scatter(summ[:,i], taupred[:,i])
+
+    savepdf(fig, "tauout_%d" % i)
+
+    fig.clf()

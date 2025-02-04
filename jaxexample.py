@@ -7,15 +7,17 @@ from tqdm import tqdm
 import orbax
 from os import makedirs
 
-from model import gen, prior, groundtruth, NMAXINITIAL, NMAXFINETUNE
-from deepset import phi, rho, runloss, runlossrho
+from model import gen, prior, groundtruth, suffstats, NMAXINITIAL, NMAXFINETUNE
+from deepset import phi, rho, tau, runloss, runlossrho, runlosstau
 from utils import splitkey
-from plot import plot
+from plot import plot, plottau
 
 
 BATCHSIZE = 128
 NBATCHES = 512*8
-NEPOCHS = 16
+NEPOCHSINITIAL = 8
+NEPOCHSFINETUNE = 16
+NEPOCHSDIRECT = 1
 LR = 1e-3
 FINETUNELR = 1e-4
 NPLOTPOINTS = 2000
@@ -45,6 +47,14 @@ def steprho(params, opt_state, batch, ns, labels):
   return params, opt_state, loss_value
 
 
+@jax.jit
+def steptau(params, opt_state, batch, ns, labels):
+  loss_value, grads = jax.value_and_grad(runlosstau)(params, phi, tau, batch, ns, labels)
+  updates, opt_state = optimizer.update(grads, opt_state, params)
+  params = optax.apply_updates(params, updates)
+  return params, opt_state, loss_value
+
+
 if RETRAINNONDIRECT:
   # Initial training
 
@@ -52,16 +62,19 @@ if RETRAINNONDIRECT:
   phiparams = phi.init(k, np.zeros((1, 1, 1)))
   k, knext = splitkey(knext)
   rhoparams = rho.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
+  k, knext = splitkey(knext)
+  tauparams = tau.init(k, phi.apply(phiparams, np.zeros((1, 1, 1))))
 
-  modelparams = { "rho" : rhoparams , "phi" : phiparams }
+  modelparams = { "tau" : tauparams , "rho" : rhoparams , "phi" : phiparams }
 
-  sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
+  sched = optax.cosine_decay_schedule(LR , NEPOCHSINITIAL*NBATCHES)
   optimizer = optax.adam(learning_rate=sched)
   opt_state = optimizer.init(modelparams)
 
   orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
 
-  for iepoch in range(NEPOCHS):
+  # initial training on small datasets
+  for iepoch in range(NEPOCHSINITIAL):
     print("epoch:", iepoch)
     for _ in tqdm(range(NBATCHES)):
       k, knext = splitkey(knext)
@@ -73,7 +86,18 @@ if RETRAINNONDIRECT:
 
 
     k, knext = splitkey(knext)
-    plot(knext, NPLOTPOINTS, phi, rho, { "initial" : modelparams }, NMAXFINETUNE, prefix="initial/", label=f"_epoch{iepoch:02d}", ntrain=NMAXINITIAL, groundtruth=groundtruth)
+    plot \
+      ( knext
+      , NPLOTPOINTS
+      , phi
+      , rho
+      , { "initial" : modelparams }
+      , NMAXFINETUNE
+      , prefix="initial/"
+      , label=f"_epoch{iepoch:02d}"
+      , ntrain=NMAXINITIAL
+      , groundtruth=groundtruth
+      )
 
     save_args = orbax_utils.save_args_from_target(modelparams)
 
@@ -81,19 +105,25 @@ if RETRAINNONDIRECT:
 
   # finetuned training
 
-  sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHS*NBATCHES)
+  sched = optax.cosine_decay_schedule(FINETUNELR , NEPOCHSFINETUNE*NBATCHES)
   optimizer = optax.adam(learning_rate=sched)
   opt_state = optimizer.init(modelparams)
 
-  for iepoch in range(NEPOCHS):
+  for iepoch in range(NEPOCHSFINETUNE):
     print("epoch:", iepoch)
     for _ in tqdm(range(NBATCHES)):
       k, knext = splitkey(knext)
       labels = prior(k, BATCHSIZE)
       k, knext = splitkey(knext)
       batch , ns = gen(k, labels, NMAXFINETUNE)
+
       modelparams, opt_state, loss_value = \
         steprho(modelparams, opt_state, batch, ns, labels)
+
+      summ = suffstats(batch, ns)
+
+      modelparams, opt_state, loss_value = \
+        steptau(modelparams, opt_state, batch, ns, summ)
 
 
     k, knext = splitkey(knext)
@@ -108,6 +138,18 @@ if RETRAINNONDIRECT:
       , label=f"_epoch{iepoch:02d}"
       , ntrain=NMAXINITIAL
       , groundtruth=groundtruth
+      )
+
+    k, knext = splitkey(knext)
+    plottau \
+      ( knext
+      , NPLOTPOINTS
+      , phi
+      , tau
+      , modelparams
+      , NMAXFINETUNE
+      , prefix="finetuned/"
+      , label=f"_epoch{iepoch:02d}"
       )
 
     save_args = orbax_utils.save_args_from_target(modelparams)
@@ -129,11 +171,11 @@ if RETRAINDIRECT:
 
   modelparams = { "rho" : rhoparams , "phi" : phiparams }
 
-  sched = optax.cosine_decay_schedule(LR , NEPOCHS*NBATCHES)
+  sched = optax.cosine_decay_schedule(LR , NEPOCHSDIRECT*NBATCHES)
   optimizer = optax.adam(learning_rate=sched)
   opt_state = optimizer.init(modelparams)
 
-  for iepoch in range(NEPOCHS):
+  for iepoch in range(NEPOCHSDIRECT):
     print("epoch:", iepoch)
     for _ in tqdm(range(NBATCHES)):
       k, knext = splitkey(knext)
@@ -142,7 +184,6 @@ if RETRAINDIRECT:
       batch , ns = gen(k, labels, NMAXFINETUNE)
       modelparams, opt_state, loss_value = \
         step(modelparams, opt_state, batch, ns, labels)
-
 
     k, knext = splitkey(knext)
     plot \

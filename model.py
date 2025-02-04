@@ -2,6 +2,7 @@ from einops import repeat
 import jax.numpy as np
 from jax import random
 from utils import splitkey
+from deepset import masksum
 
 PRIORSIGMAMU = 10
 MAXSIGMAX = 100
@@ -35,5 +36,12 @@ def prior(keyrest, batches):
   return mu
 
 groundtruth = None
+
+
+def suffstats(xs, ns):
+  sumxs = masksum(xs, ns)
+  sumxs2 = masksum(xs * xs, ns)
+  return np.concatenate([ sumxs / ns , np.sqrt(sumxs2 / ns)], axis=1)
+
 # def groundtruth(ns):
 #   return np.sqrt(1.0 / (1.0 / SIGMAMU**2 + ns / SIGMAX**2))
